@@ -1,3 +1,4 @@
+from re import M
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,7 +8,7 @@ def calculate_least_squares(feature_matrix, target_matrix, m_value):
         feature_matrix_transpose = np.transpose(feature_matrix)
         feature_multiply = np.matmul(feature_matrix_transpose, feature_matrix)
         featureT_multiply_target = np.matmul(feature_matrix_transpose, target_matrix)
-        w_values = np.matmul(np.matrix(1 / feature_multiply), featureT_multiply_target)
+        w_values = featureT_multiply_target / feature_multiply
     else:
         feature_matrix_transpose = np.transpose(feature_matrix)
         feature_multiply = np.matmul(feature_matrix_transpose, feature_matrix)
@@ -30,14 +31,33 @@ def insert_m_features(feature_matrix, m_value):
         return feature_matrix
 
 
-def calculate_error(feature_matrix, target_matrix, w_values):
-    prediction = np.matmul(feature_matrix, w_values)
-    pred_minus_target = np.subtract(prediction, target_matrix)
-    number_of_features = feature_matrix[:, 1:].size
-    prediction_error = (1 / number_of_features) * (
-        np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
-    )
+def calculate_error(feature_matrix, target_matrix, w_values, m_value):
+    if m_value == 0:
+        prediction = feature_matrix * w_values
+        pred_minus_target = np.subtract(prediction, target_matrix)
+        number_of_features = feature_matrix.size
+        prediction_error = (1 / number_of_features) * (
+            np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
+        )
+    else:
+        prediction = np.matmul(feature_matrix, w_values)
+        pred_minus_target = np.subtract(prediction, target_matrix)
+        number_of_features = feature_matrix[:, 1:].size
+        prediction_error = (1 / number_of_features) * (
+            np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
+        )
     return prediction_error
+
+
+def find_predictor_values(data_matrix, w_values, m_value):
+    predictor = []
+    predictor_val = 0
+    for idx in range(len(data_matrix)):
+        while m_value >= 0:
+            predictor_val += w_values[idx] * X_train[idx] ** m_value
+            m_value -= 1
+        predictor.append(predictor_val)
+    return predictor
 
 
 # def main():
@@ -59,34 +79,56 @@ X_valid_mat = np.insert(X_valid_mat, 0, np.ones(100), axis=1)
 t_train_mat = np.reshape(t_train, (-1, 1))
 t_valid_mat = np.reshape(t_valid, (-1, 1))
 
-for m_val in range(10):
-    print("******************************************")
-    print("*    STARTING CALCULATIONS FOR M = ", m_val, "   *")
-    print("******************************************")
-    
-    feature_train_matrix = insert_m_features(X_train_mat, m_value=m_val)
-    feature_valid_matrix = insert_m_features(X_valid_mat, m_value=m_val)
-    w_train_values = calculate_least_squares(feature_train_matrix, t_train_mat, m_value=m_val)
-    w_valid_values = calculate_least_squares(feature_valid_matrix, t_valid_mat, m_value=m_val)
-    training_error = calculate_error(feature_train_matrix, t_train_mat, w_train_values)
-    validation_error = calculate_error(feature_valid_matrix, t_train_mat, w_valid_values)
+# for m_val in range(10):
+m_val = 2
+print("*******************************")
+print("*    STATISTICS FOR M = ", m_val, "   *")
+print("*******************************\n")
 
-# print("The y matrix is: ", t_train_mat)
-# print("The validation set is: ", X_valid)
-# input("Press any key to continue...")
+feature_train_matrix = insert_m_features(feature_matrix=X_train_mat, m_value=m_val)
+print("Feature Matrix for training set: \n", feature_train_matrix)
+feature_valid_matrix = insert_m_features(feature_matrix=X_valid_mat, m_value=m_val)
+print("Feature Matrix for validation set: \n", feature_valid_matrix)
+w_train_values = calculate_least_squares(
+    feature_matrix=feature_train_matrix, target_matrix=t_train_mat, m_value=m_val
+)
+print("W Value(s) for training set: \n", w_train_values)
+w_valid_values = calculate_least_squares(
+    feature_matrix=feature_valid_matrix, target_matrix=t_valid_mat, m_value=m_val
+)
+print("W Value(s) for validation set: \n", w_train_values)
+training_error = calculate_error(
+    feature_matrix=feature_train_matrix,
+    target_matrix=t_train_mat,
+    w_values=w_train_values,
+    m_value=m_val,
+)
+print(f"The training error for M = {m_val} is: {training_error}")
+validation_error = calculate_error(
+    feature_matrix=feature_valid_matrix,
+    target_matrix=t_valid_mat,
+    w_values=w_valid_values,
+    m_value=m_val,
+)
+print(f"The validation error for M = {m_val} is: {validation_error}")
+training_predictor = find_predictor_values(
+    data_matrix=X_train_mat, w_values=w_train_values, m_value=m_val
+)
+print("The predictor function values for the training set are: \n", training_predictor)
+validation_predictor = find_predictor_values(
+    data_matrix=X_valid_mat, w_values=w_valid_values, m_value=m_val
+)
+# print("The predictor function values for the validation set are: \n", validation_predictor)
+plt.scatter(X_train, t_train, s=15)
+plt.scatter(X_valid, t_valid, s=15)
+m, b = np.polyfit(X_train, training_predictor, m_val)
+plt.plot(X_train, training_predictor)
+plt.plot(X_train, m*X_train+b)
+plt.title(f"Plot for M = {m_val} Set")
+plt.show()
 
-# plt.scatter(X_train, t_train, s=15)
-# plt.scatter(X_valid, t_valid, s=15)
-# plt.title("Training and Validation Set")
-# plt.show()
-
-# print(type(X_train_matrix))
-# print(X_train_matrix)
-# print(type(X_train))
-
-# predictor_values = []
-# for val in range(10):
-#     m_val = 0
-#     for i in range(len(X_train)):
-#         predictor += w_const * (X_train[i] ** m_val)
-#     predictor_values.append(predictor)
+next_m_val = m_val + 1
+if m_val < 9:
+    input(f"Press any key to continue to M = {next_m_val}")
+else:
+    print("Predictions and plots have been created.")
