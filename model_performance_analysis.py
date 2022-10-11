@@ -1,9 +1,18 @@
-from re import M
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def calculate_least_squares(feature_matrix, target_matrix, m_value):
+    """Calculate lease squares regression for provided feature and target matrices.
+
+    Args:
+        feature_matrix (ndarray): _description_
+        target_matrix (_type_): _description_
+        m_value (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     if m_value == 0:
         feature_matrix_transpose = np.transpose(feature_matrix)
         feature_multiply = np.matmul(feature_matrix_transpose, feature_matrix)
@@ -49,15 +58,37 @@ def calculate_error(feature_matrix, target_matrix, w_values, m_value):
     return prediction_error
 
 
-def find_predictor_values(data_matrix, w_values, m_value):
-    predictor = []
-    predictor_val = 0
-    for idx in range(len(data_matrix)):
-        while m_value >= 0:
-            predictor_val += w_values[idx] * data_matrix[idx] ** m_value
-            m_value -= 1
-        predictor.append(predictor_val)
-    return predictor
+def find_predictor_values(X_matrix, w_values, m_value):
+    if m_value == 0:
+        prediction = X_matrix * w_values
+    else:
+        prediction = np.matmul(X_matrix, w_values)
+    return prediction
+
+
+def plot(
+    m_value,
+    X_train,
+    X_valid,
+    training_set,
+    validation_set,
+    training_prediction,
+    validation_prediction,
+    f_true_training,
+    f_true_validation,
+):
+    plt.scatter(X_train, training_set, s=15, c="b", label="Training Set")
+    plt.scatter(X_valid, validation_set, s=15, c="orange", label="Validation Set")
+    plt.plot(
+        X_valid, validation_prediction, c="g", label="Validation Prediction (f_M_(x))"
+    )
+    plt.plot(
+        X_valid, f_true_validation, c="r", label="True Curve Validation (f_true_(x))"
+    )
+    plt.legend()
+    plt.title(f"Plot for M = {m_value}")
+    plt.show()
+    return
 
 
 def main():
@@ -78,7 +109,8 @@ def main():
     t_train_mat = np.reshape(t_train, (-1, 1))
     t_valid_mat = np.reshape(t_valid, (-1, 1))
 
-    for m_val in range(10):
+    max_M_val = 10
+    for m_val in range(max_M_val):
         print("*******************************")
         print("*    STATISTICS FOR M = ", m_val, "   *")
         print("*******************************\n")
@@ -117,30 +149,35 @@ def main():
             m_value=m_val,
         )
         print(f"The validation error for M = {m_val} is: {validation_error}")
-        training_predictor = find_predictor_values(
-            data_matrix=X_train_mat, w_values=w_train_values, m_value=m_val
+        training_prediction = find_predictor_values(
+            X_matrix=feature_train_matrix, w_values=w_train_values, m_value=m_val
         )
         print(
             "The predictor function values for the training set are: \n",
-            training_predictor,
+            training_prediction,
         )
-        validation_predictor = find_predictor_values(
-            data_matrix=X_valid_mat, w_values=w_valid_values, m_value=m_val
+        validation_prediction = find_predictor_values(
+            X_matrix=feature_valid_matrix, w_values=w_valid_values, m_value=m_val
         )
-        # print("The predictor function values for the validation set are: \n", validation_predictor)
-        plt.scatter(X_train, t_train, s=15)
-        plt.scatter(X_valid, t_valid, s=15)
-        m, b = np.polyfit(X_train, training_predictor, m_val)
-        plt.plot(X_train, training_predictor)
-        plt.plot(X_train, m * X_train + b)
-        plt.title(f"Plot for M = {m_val} Set")
-        plt.show()
+        print(
+            "The predictor function values for the validation set are: \n",
+            validation_prediction,
+        )
+        f_true_train = np.sin(4 * np.pi * X_train)
+        f_true_valid = np.sin(4 * np.pi * X_valid)
 
         next_m_val = m_val + 1
-        if m_val < 9:
-            input(f"Press any key to continue to M = {next_m_val}")
-        else:
-            print("Predictions and plots have been created.")
+        plot(
+            m_value=m_val,
+            X_train=X_train,
+            X_valid=X_valid,
+            training_set=t_train,
+            validation_set=t_valid,
+            training_prediction=training_prediction,
+            validation_prediction=validation_prediction,
+            f_true_training=f_true_train,
+            f_true_validation=f_true_valid,
+        )
 
 
 if __name__ == "__main__":
