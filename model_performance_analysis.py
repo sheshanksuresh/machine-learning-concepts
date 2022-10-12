@@ -1,3 +1,4 @@
+from cProfile import label
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -48,6 +49,7 @@ def calculate_error(feature_matrix, target_matrix, w_values, m_value):
         prediction_error = (1 / number_of_features) * (
             np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
         )
+        prediction_error = prediction_error[0][0]
     else:
         prediction = np.matmul(feature_matrix, w_values)
         pred_minus_target = np.subtract(prediction, target_matrix)
@@ -55,6 +57,7 @@ def calculate_error(feature_matrix, target_matrix, w_values, m_value):
         prediction_error = (1 / number_of_features) * (
             np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
         )
+        prediction_error = prediction_error[0][0]
     return prediction_error
 
 
@@ -66,15 +69,13 @@ def find_predictor_values(X_matrix, w_values, m_value):
     return prediction
 
 
-def plot(
+def plot_M(
     m_value,
     X_train,
     X_valid,
     training_set,
     validation_set,
-    training_prediction,
     validation_prediction,
-    f_true_training,
     f_true_validation,
 ):
     plt.scatter(X_train, training_set, s=15, c="b", label="Training Set")
@@ -87,6 +88,15 @@ def plot(
     )
     plt.legend()
     plt.title(f"Plot for M = {m_value}")
+    plt.show()
+    return
+
+
+def plot_errors(training_errors, validation_errors, m_values):
+    plt.scatter(m_values, training_errors, s=10, c="b", label="Training Error")
+    plt.scatter(m_values, validation_errors, s=10, c="orange", label="Validation Error")
+    plt.legend()
+    plt.title("Training and Validation Errors")
     plt.show()
     return
 
@@ -109,7 +119,12 @@ def main():
     t_train_mat = np.reshape(t_train, (-1, 1))
     t_valid_mat = np.reshape(t_valid, (-1, 1))
 
+    f_true_valid = np.sin(4 * np.pi * X_valid)
+
     max_M_val = 10
+    m_values = np.linspace(0, 9, 10)
+    training_errors = []
+    validation_errors = []
     for m_val in range(max_M_val):
         print("*******************************")
         print("*    STATISTICS FOR M = ", m_val, "   *")
@@ -119,65 +134,60 @@ def main():
             feature_matrix=X_train_mat, m_value=m_val
         )
         print("Feature Matrix for training set: \n", feature_train_matrix)
+
         feature_valid_matrix = insert_m_features(
             feature_matrix=X_valid_mat, m_value=m_val
         )
         print("Feature Matrix for validation set: \n", feature_valid_matrix)
+
         w_train_values = calculate_least_squares(
             feature_matrix=feature_train_matrix,
             target_matrix=t_train_mat,
             m_value=m_val,
         )
         print("W Value(s) for training set: \n", w_train_values)
-        w_valid_values = calculate_least_squares(
-            feature_matrix=feature_valid_matrix,
-            target_matrix=t_valid_mat,
-            m_value=m_val,
-        )
-        print("W Value(s) for validation set: \n", w_train_values)
+
         training_error = calculate_error(
             feature_matrix=feature_train_matrix,
             target_matrix=t_train_mat,
             w_values=w_train_values,
             m_value=m_val,
         )
+        training_errors.append(training_error)
         print(f"The training error for M = {m_val} is: {training_error}")
+
         validation_error = calculate_error(
             feature_matrix=feature_valid_matrix,
             target_matrix=t_valid_mat,
-            w_values=w_valid_values,
+            w_values=w_train_values,
             m_value=m_val,
         )
+        validation_errors.append(validation_error)
         print(f"The validation error for M = {m_val} is: {validation_error}")
-        training_prediction = find_predictor_values(
-            X_matrix=feature_train_matrix, w_values=w_train_values, m_value=m_val
-        )
-        print(
-            "The predictor function values for the training set are: \n",
-            training_prediction,
-        )
+
         validation_prediction = find_predictor_values(
-            X_matrix=feature_valid_matrix, w_values=w_valid_values, m_value=m_val
+            X_matrix=feature_valid_matrix, w_values=w_train_values, m_value=m_val
         )
         print(
             "The predictor function values for the validation set are: \n",
             validation_prediction,
         )
-        f_true_train = np.sin(4 * np.pi * X_train)
-        f_true_valid = np.sin(4 * np.pi * X_valid)
 
-        next_m_val = m_val + 1
-        plot(
+        plot_M(
             m_value=m_val,
             X_train=X_train,
             X_valid=X_valid,
             training_set=t_train,
             validation_set=t_valid,
-            training_prediction=training_prediction,
             validation_prediction=validation_prediction,
-            f_true_training=f_true_train,
             f_true_validation=f_true_valid,
         )
+
+    plot_errors(
+        m_values=m_values,
+        training_errors=training_errors,
+        validation_errors=validation_errors,
+    )
 
 
 if __name__ == "__main__":
