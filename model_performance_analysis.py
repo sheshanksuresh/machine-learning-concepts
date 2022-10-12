@@ -3,17 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def calculate_least_squares(feature_matrix, target_matrix, m_value):
-    """Calculate lease squares regression for provided feature and target matrices.
-
-    Args:
-        feature_matrix (ndarray): _description_
-        target_matrix (_type_): _description_
-        m_value (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
+def calculate_w_value(feature_matrix, target_matrix, m_value):
     if m_value == 0:
         feature_matrix_transpose = np.transpose(feature_matrix)
         feature_multiply = np.matmul(feature_matrix_transpose, feature_matrix)
@@ -25,6 +15,28 @@ def calculate_least_squares(feature_matrix, target_matrix, m_value):
         featureT_multiply_target = np.matmul(feature_matrix_transpose, target_matrix)
         w_values = np.matmul(np.linalg.inv(feature_multiply), featureT_multiply_target)
     return w_values
+
+
+def calculate_B_matrix(lambda_val):
+    B_matrix = np.zeros((10, 10))
+    for i in range(1, 10):
+        B_matrix[i][i] = 2 * lambda_val
+    return B_matrix
+
+
+def training_regularization(feature_matrix, target_matrix, B_matrix):
+    N = len(target_matrix)
+    w_first_half = (
+        np.matmul(np.transpose(feature_matrix), feature_matrix) + N * B_matrix / 2
+    )
+    if np.linalg.det(w_first_half) != 0:
+        w_first_half = np.linalg.inv(w_first_half)
+    else:
+        print("Determinant is equal to zero")
+        exit()
+    w_second_half = np.matmul(np.transpose(feature_matrix), target_matrix)
+    w_value_M9 = np.matmul(w_first_half, w_second_half)
+    return w_value_M9
 
 
 def insert_m_features(feature_matrix, m_value):
@@ -45,20 +57,18 @@ def calculate_error(feature_matrix, target_matrix, w_values, m_value):
     if m_value == 0:
         prediction = feature_matrix * w_values
         pred_minus_target = np.subtract(prediction, target_matrix)
-        number_of_features = feature_matrix.size
-        prediction_error = (1 / number_of_features) * (
+        N_value = len(target_matrix)
+        prediction_error = (1 / N_value) * (
             np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
         )
-        prediction_error = prediction_error[0][0]
     else:
         prediction = np.matmul(feature_matrix, w_values)
         pred_minus_target = np.subtract(prediction, target_matrix)
-        number_of_features = feature_matrix[:, 1:].size
-        prediction_error = (1 / number_of_features) * (
+        N_value = len(target_matrix)
+        prediction_error = (1 / N_value) * (
             np.matmul((np.transpose(pred_minus_target)), pred_minus_target)
         )
-        prediction_error = prediction_error[0][0]
-    return prediction_error
+    return prediction_error[0][0]
 
 
 def find_predictor_values(X_matrix, w_values, m_value):
@@ -140,7 +150,7 @@ def main():
         )
         print("Feature Matrix for validation set: \n", feature_valid_matrix)
 
-        w_train_values = calculate_least_squares(
+        w_train_values = calculate_w_value(
             feature_matrix=feature_train_matrix,
             target_matrix=t_train_mat,
             m_value=m_val,
