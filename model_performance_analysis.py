@@ -1,6 +1,7 @@
+from audioop import avg
 import numpy as np
 import matplotlib.pyplot as plt
-
+from sklearn.preprocessing import StandardScaler
 
 def calculate_w_value(feature_matrix, target_matrix, m_value):
     if m_value == 0:
@@ -18,7 +19,7 @@ def calculate_w_value(feature_matrix, target_matrix, m_value):
 
 def calculate_B_matrix(lambda_val):
     B_matrix = np.zeros((10, 10))
-    for i in range(1, 10):
+    for i in range(0, 10):
         B_matrix[i][i] = 2 * lambda_val
     return B_matrix
 
@@ -31,7 +32,7 @@ def calculate_w9_regularization(feature_matrix, target_matrix, B_matrix):
     if np.linalg.det(w_first_half) != 0:
         w_first_half = np.linalg.inv(w_first_half)
     else:
-        print("Determinant is equal to zero")
+        print("Determinant is equal to zero -- Exiting Program")
         exit()
     w_second_half = np.matmul(np.transpose(feature_matrix), target_matrix)
     w_value_M9 = np.matmul(w_first_half, w_second_half)
@@ -129,6 +130,14 @@ def plot_M_regularization(
     plt.show()
     return
 
+def calculate_avg_error(f_true, X_valid, t_valid):
+    avg_error = 0
+    for val in range(len(t_valid)):
+        true_minus_valid = abs(f_true[val]-X_valid[val])
+        point_error = true_minus_valid/2
+        avg_error += point_error
+    avg_error = avg_error/(len(t_valid))
+    return avg_error
 
 def plot_errors(
     training_errors,
@@ -137,8 +146,10 @@ def plot_errors(
     lambda_training_error_2,
     lambda_validation_error_1,
     lambda_validation_error_2,
+    avg_error,
     m_values,
 ):
+    np.append(m_values, 10) # To handle average error on same plot
     plt.figure(figsize=(10, 8))
     plt.scatter(m_values, training_errors, s=10, c="b", label="Training Error")
     plt.scatter(m_values, validation_errors, s=10, c="orange", label="Validation Error")
@@ -154,6 +165,10 @@ def plot_errors(
     plt.scatter(
         9, lambda_validation_error_2, s=10, c="c", label="Lambda 2 Validation Error"
     )
+    plt.scatter(10, avg_error, s=10, c="k", label="Average Error")
+    m_values.astype('str')[9] = "avg_error"
+    x_ticks = m_values
+    plt.xticks(m_values, x_ticks)
     plt.legend()
     plt.title("Training and Validation Errors")
     plt.show()
@@ -242,88 +257,94 @@ def main():
             validation_prediction=validation_prediction,
             f_true_validation=f_true_valid,
         )
-        if m_val == 9:
-            lambda_value_1 = 10**-10
-            lambda_value_2 = 10**3
 
-            B_lambda_1 = calculate_B_matrix(lambda_val=lambda_value_1)
-            B_lambda_2 = calculate_B_matrix(lambda_val=lambda_value_2)
+    lambda_value_1 = 10**-9
+    lambda_value_2 = 10**-3
 
-            w_train_values_l1 = calculate_w9_regularization(
-                feature_matrix=feature_train_matrix,
-                target_matrix=t_train_mat,
-                B_matrix=B_lambda_1,
-            )
-            w_train_values_l2 = calculate_w9_regularization(
-                feature_matrix=feature_train_matrix,
-                target_matrix=t_train_mat,
-                B_matrix=B_lambda_2,
-            )
+    B_lambda_1 = calculate_B_matrix(lambda_val=lambda_value_1)
+    B_lambda_2 = calculate_B_matrix(lambda_val=lambda_value_2)
 
-            training_error_l1 = calculate_error(
-                feature_matrix=feature_train_matrix,
-                target_matrix=t_train_mat,
-                w_values=w_train_values_l1,
-                m_value=m_val,
-            )
-            lambda_training_error_1 = training_error_l1
-            training_error_l2 = calculate_error(
-                feature_matrix=feature_train_matrix,
-                target_matrix=t_train_mat,
-                w_values=w_train_values_l2,
-                m_value=m_val,
-            )
-            lambda_training_error_2 = training_error_l2
-            validation_error_l1 = calculate_error(
-                feature_matrix=feature_valid_matrix,
-                target_matrix=t_valid_mat,
-                w_values=w_train_values_l1,
-                m_value=m_val,
-            )
-            lambda_validation_error_1 = validation_error_l1
-            validation_error_l2 = calculate_error(
-                feature_matrix=feature_valid_matrix,
-                target_matrix=t_valid_mat,
-                w_values=w_train_values_l2,
-                m_value=m_val,
-            )
-            lambda_validation_error_2 = validation_error_l2
+    sc = StandardScaler()
+    XX_train = sc.fit_transform(feature_train_matrix)
+    XX_valid = sc.transform(feature_valid_matrix)
 
-            validation_prediction_l1 = find_predictor_values(
-                X_matrix=feature_valid_matrix, w_values=w_train_values_l1, m_value=m_val
-            )
-            print(
-                "The predictor function values for the validation set are: \n",
-                validation_prediction_l1,
-            )
-            validation_prediction_l2 = find_predictor_values(
-                X_matrix=feature_valid_matrix, w_values=w_train_values_l2, m_value=m_val
-            )
-            print(
-                "The predictor function values for the validation set are: \n",
-                validation_prediction_l2,
-            )
+    w_train_values_l1 = calculate_w9_regularization(
+        feature_matrix=XX_train,
+        target_matrix=t_train_mat,
+        B_matrix=B_lambda_1,
+    )
+    w_train_values_l2 = calculate_w9_regularization(
+        feature_matrix=XX_train,
+        target_matrix=t_train_mat,
+        B_matrix=B_lambda_2,
+    )
 
-            plot_M_regularization(
-                m_value=m_val,
-                X_train=X_train,
-                X_valid=X_valid,
-                training_set=t_train,
-                validation_set=t_valid,
-                validation_prediction=validation_prediction_l1,
-                f_true_validation=f_true_valid,
-                lambda_val=lambda_value_1,
-            )
-            plot_M_regularization(
-                m_value=m_val,
-                X_train=X_train,
-                X_valid=X_valid,
-                training_set=t_train,
-                validation_set=t_valid,
-                validation_prediction=validation_prediction_l2,
-                f_true_validation=f_true_valid,
-                lambda_val=lambda_value_2,
-            )
+    training_error_l1 = calculate_error(
+        feature_matrix=XX_train,
+        target_matrix=t_train_mat,
+        w_values=w_train_values_l1,
+        m_value=m_val,
+    )
+    lambda_training_error_1 = training_error_l1
+    training_error_l2 = calculate_error(
+        feature_matrix=XX_train,
+        target_matrix=t_train_mat,
+        w_values=w_train_values_l2,
+        m_value=m_val,
+    )
+    lambda_training_error_2 = training_error_l2
+    validation_error_l1 = calculate_error(
+        feature_matrix=XX_valid,
+        target_matrix=t_valid_mat,
+        w_values=w_train_values_l1,
+        m_value=m_val,
+    )
+    lambda_validation_error_1 = validation_error_l1
+    validation_error_l2 = calculate_error(
+        feature_matrix=XX_valid,
+        target_matrix=t_valid_mat,
+        w_values=w_train_values_l2,
+        m_value=m_val,
+    )
+    lambda_validation_error_2 = validation_error_l2
+
+    validation_prediction_l1 = find_predictor_values(
+        X_matrix=XX_valid, w_values=w_train_values_l1, m_value=m_val
+    )
+    print(
+        "The predictor function values for the validation set are: \n",
+        validation_prediction_l1,
+    )
+    validation_prediction_l2 = find_predictor_values(
+        X_matrix=XX_valid, w_values=w_train_values_l2, m_value=m_val
+    )
+    print(
+        "The predictor function values for the validation set are: \n",
+        validation_prediction_l2,
+    )
+
+    plot_M_regularization(
+        m_value=m_val,
+        X_train=X_train,
+        X_valid=X_valid,
+        training_set=t_train,
+        validation_set=t_valid,
+        validation_prediction=validation_prediction_l1,
+        f_true_validation=f_true_valid,
+        lambda_val=lambda_value_1,
+    )
+    plot_M_regularization(
+        m_value=m_val,
+        X_train=X_train,
+        X_valid=X_valid,
+        training_set=t_train,
+        validation_set=t_valid,
+        validation_prediction=validation_prediction_l2,
+        f_true_validation=f_true_valid,
+        lambda_val=lambda_value_2,
+    )
+    
+    avg_error = calculate_avg_error(f_true=f_true_valid, X_valid=X_valid, t_valid=t_valid)
 
     plot_errors(
         training_errors=training_errors,
@@ -332,6 +353,7 @@ def main():
         lambda_training_error_2=lambda_training_error_2,
         lambda_validation_error_1=lambda_validation_error_1,
         lambda_validation_error_2=lambda_validation_error_2,
+        avg_error=avg_error,
         m_values=m_values,
     )
 
